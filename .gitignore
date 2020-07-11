@@ -172,9 +172,7 @@ compile_commands.json
 .clangd/
 
 # Project files
-#Content/Dynamic/Levels/FirstPersonExampleMap_BuiltData.uasset
-#Content/AssetPacks/GameDevTV/
-#Content/AssetPacks/ParagonWraith/
-#Content/AssetPacks/ModularSciFiSeason1/
+Debug/
+VulkanProject/Debug/VulkanProject.tlog/
 
 
