@@ -3,6 +3,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -12,6 +13,7 @@ public:
 	VulkanRenderer();
 
 	int init(GLFWwindow* newWindow);
+	void cleanup();
 
 	~VulkanRenderer();
 
@@ -20,11 +22,19 @@ private:
 
 	// Vulkan Components
 	VkInstance instance;
+	struct {
+		VkPhysicalDevice physicalDevice;
+		VkDevice logicalDevice;
+	} mainDevice;
 
-	// Creation functions
+	// Vulkan Functions
+	// - Creation functions
 	void createInstance();
 
-	// Utility functions
+	// - Get Functions
+	void getPhysicalDevice();
+
+	// - Utility functions
 	bool checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions);
 };
 

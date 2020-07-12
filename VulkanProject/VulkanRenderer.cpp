@@ -9,14 +9,21 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 	this->window = window;
 	
 	try {
-
+		createInstance();
+		//getPhysicalDevice();
 	}
 	catch (const std::runtime_error& e) {
+		std::cout << "ERROR" << e.what() << std::endl;
 		printf("Error: %s\n", e.what());
 		return EXIT_FAILURE;
 	}
 
 	return 0;
+}
+
+void VulkanRenderer::cleanup()
+{
+	vkDestroyInstance(instance, nullptr);
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -71,6 +78,10 @@ void VulkanRenderer::createInstance()
 	}
 }
 
+void VulkanRenderer::getPhysicalDevice()
+{
+}
+
 bool VulkanRenderer::checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions)
 {
 	// First we need to get the number of extensions to create array of correct to hold extensions
@@ -83,6 +94,7 @@ bool VulkanRenderer::checkInstanceExtensionSupport(std::vector<const char*>* che
 
 	// Check if given extensions are in the list of available extensiosn
 	for (const auto& checkExtension : *checkExtensions) {
+
 		bool hasExtension = false;
 		for (const auto& extension : extensions) {
 			if (strcmp(checkExtension, extension.extensionName) == 0) {
@@ -92,9 +104,10 @@ bool VulkanRenderer::checkInstanceExtensionSupport(std::vector<const char*>* che
 		}
 		if (!hasExtension)
 		{
+			std::cout << "Doesn't have extension: " << checkExtension << std::endl;
 			return false;
 		}
 	}
 
-	return false;
+	return true;
 }
