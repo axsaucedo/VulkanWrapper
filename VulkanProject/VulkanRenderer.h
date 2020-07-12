@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Utilities.h"
+
 class VulkanRenderer 
 {
 public:
@@ -26,15 +28,21 @@ private:
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
 	} mainDevice;
+	VkQueue graphicsQueue;
 
 	// Vulkan Functions
 	// - Creation functions
 	void createInstance();
+	void createLogicalDevice();
 
 	// - Get Functions
 	void getPhysicalDevice();
 
+	// - Getters
+	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice physicalDevice);
+
 	// - Utility functions
 	bool checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions);
+	bool checkDeviceSuitable(VkPhysicalDevice physicalDevice);
 };
 
