@@ -6,12 +6,19 @@ VulkanRenderer::VulkanRenderer()
 
 int VulkanRenderer::init(GLFWwindow* newWindow)
 {
-	this->window = window;
+	this->window = newWindow;
 	
 	try {
+		std::cout << "Creating instance" << std::endl;
 		this->createInstance();
+		std::cout << "Creating surface" << std::endl;
+		this->createSurface();
+		std::cout << "Creating physical device" << std::endl;
 		this->getPhysicalDevice();
+		std::cout << "Creating logical device" << std::endl;
 		this->createLogicalDevice();
+		std::cout << "Creating surface" << std::endl;
+		this->createSurface();
 	}
 	catch (const std::runtime_error& e) {
 		std::cout << "ERROR" << e.what() << std::endl;
@@ -24,6 +31,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::cleanup()
 {
+	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyDevice(this->mainDevice.logicalDevice, nullptr);
 	vkDestroyInstance(instance, nullptr);
 }
@@ -53,7 +61,7 @@ void VulkanRenderer::createInstance()
 	uint32_t glfwExtensionCount = 0;
 	const char** glfwExtensions;
 
-	// Get the exact Vulkan extensions that GLFW requires to talk to vulkan to build windows
+	// Get thes exact Vulkan extensions that GLFW requires to talk to vulkan to build windows
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	for (size_t i = 0; i < glfwExtensionCount; i++) {
@@ -72,7 +80,7 @@ void VulkanRenderer::createInstance()
 	createInfo.ppEnabledLayerNames = nullptr;
 
 	// Create Vulkan instance
-	VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+	VkResult result = vkCreateInstance(&createInfo, nullptr, &this->instance);
 
 	if (result != VK_SUCCESS)
 	{
@@ -85,20 +93,29 @@ void VulkanRenderer::createLogicalDevice()
 	// Get the queue family indices for the chosen physical device
 	QueueFamilyIndices indices = this->getQueueFamilies(mainDevice.physicalDevice);
 
+	// Vector for queue creation information, and set for family indices to ensure we don't do creation twice if same queue index
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<int> queueFamilyIndices = { indices.graphicsFamily, indices.presentationFamily };
+
 	// The queue of the logical device that needs ot be created as well as information required to do so
-	VkDeviceQueueCreateInfo queueCreateInfo = {};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphicsFamily; // The index of the family to create a queue from
-	queueCreateInfo.queueCount = 1; // Numbers of queues to create
-	float priority = 1.0f;
-	queueCreateInfo.pQueuePriorities = &priority; // Vulkan neeeds to know how to handle multiple queues, so decide priority
+	for (int queueFamilyIndex : queueFamilyIndices) {
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamilyIndex; // The index of the family to create a queue from
+		queueCreateInfo.queueCount = 1; // Numbers of queues to create
+		float priority = 1.0f;
+		queueCreateInfo.pQueuePriorities = &priority; // Vulkan neeeds to know how to handle multiple queues, so decide priority
+
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
 
 	// Information to create logical device (sometimes called "device")
 	VkDeviceCreateInfo deviceCreateInfo = {};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.queueCreateInfoCount = 1; // Number of queue create infos
-	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo; // List of queue create infos so device can create required queues
-	deviceCreateInfo.enabledExtensionCount = 0; // number of enabled logical device extensions (no needd as its logical)
+	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()); // Number of queue create infos
+	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data(); // List of queue create infos so device can create required queues
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()); // number of enabled logical device extensions (no needd as its logical)
+	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 	// Physical device features the logical device will be using
 	// By default features will be false 
@@ -117,6 +134,18 @@ void VulkanRenderer::createLogicalDevice()
 	// So we want to handle to the queues
 	// From given logical device, of given queue family, of given queue index (0 since only queue), place reference in given queue
 	vkGetDeviceQueue(this->mainDevice.logicalDevice, indices.graphicsFamily, 0, &this->graphicsQueue);
+	vkGetDeviceQueue(this->mainDevice.logicalDevice, indices.presentationFamily, 0, &this->presentationQueue);
+}
+
+void VulkanRenderer::createSurface()
+{
+	// Creating a surface createInfo Struct, runs create surface function, returns result
+	VkResult result = glfwCreateWindowSurface(this->instance, this->window, nullptr, &this->surface);
+
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create surface");
+	}
 }
 
 void VulkanRenderer::getPhysicalDevice()
@@ -155,12 +184,21 @@ QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice physicalDev
 
 	// Go through each queue family and check if it has at least 1 of the required types of queue
 	int i = 0; // Queues are actually in order starting from 0
-	for (const VkQueueFamilyProperties& queueFamily : queueFamilyList) {
+	for (const auto& queueFamily : queueFamilyList) {
 		// First check if queue family has at least 1 queue in family (could have no queues)
 		// Queue can be multiple types defined through bitfield. Need to bitwise AND with BK_QUEUE_*_BIT to check if required
 		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;// If queue family is valid, then get the index
 		}
+
+		// Check if queue family supports presentation
+		VkBool32 presentationSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, this->surface, &presentationSupport);
+		// A queue can be both graphics and presentation hence why its not just else if
+		if (queueFamily.queueCount > 0 && presentationSupport) {
+			indices.presentationFamily = i;
+		}
+
 		if (indices.isValid()) {
 			break;
 		}
@@ -200,6 +238,36 @@ bool VulkanRenderer::checkInstanceExtensionSupport(std::vector<const char*>* che
 	return true;
 }
 
+bool VulkanRenderer::checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice)
+{
+	// Get device extension count
+	uint32_t extensionCount = 0;
+	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+
+	if (extensionCount == 0) {
+		return false;
+	}
+
+	// Populate lst extension
+	std::vector<VkExtensionProperties> extensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, extensions.data());
+
+	// Check that the extension exists in device
+	for (const char * const deviceExtension : deviceExtensions) {
+		bool hasExtension = false;
+		for (const VkExtensionProperties& extension : extensions) {
+			if (strcmp(deviceExtension, extension.extensionName) == 0) {
+				hasExtension = true;
+			}
+		}
+
+		if (!hasExtension) {
+			return false;
+		}
+	}
+	return true;
+}
+
 bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice physicalDevice)
 {
 	// Information about the device itself (ID, name, type, vendor, etc)
@@ -214,5 +282,7 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice physicalDevice)
 
 	QueueFamilyIndices indices = this->getQueueFamilies(physicalDevice);
 
-	return indices.isValid();
+	bool extensionSupported = checkDeviceExtensionSupport(physicalDevice);
+
+	return indices.isValid() && extensionSupported;
 }
