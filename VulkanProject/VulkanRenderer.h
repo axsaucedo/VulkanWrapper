@@ -44,6 +44,7 @@ private:
 
 	// - Getters
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice physicalDevice);
+	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
 
 	// - Utility functions
 	bool checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions);

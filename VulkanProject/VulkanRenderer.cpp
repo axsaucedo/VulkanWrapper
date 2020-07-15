@@ -208,6 +208,36 @@ QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice physicalDev
 	return indices;
 }
 
+SwapChainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalDevice device)
+{
+	SwapChainDetails swapChainDetails;
+
+	// -- CAPABILITIES --
+	// Get the surface capabilities for the given surface on the given physical device
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, this->surface, &swapChainDetails.surfaceCapabilities);
+
+	// -- FORMATS --
+	uint32_t formatCount = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, this->surface, &formatCount, nullptr);
+
+	if (formatCount != 0) {
+		swapChainDetails.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, swapChainDetails.formats.data());
+	}
+
+	// -- PRESENTATION MODES
+	uint32_t presentationCount = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentationCount, nullptr);
+
+	// If presentation modes returned, get list of presentation modes
+	if (presentationCount != 0) {
+		swapChainDetails.presentationModes.resize(presentationCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentationCount, swapChainDetails.presentationModes.data());
+	}
+
+	return swapChainDetails;
+}
+
 bool VulkanRenderer::checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions)
 {
 	// First we need to get the number of extensions to create array of correct to hold extensions
@@ -284,5 +314,12 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice physicalDevice)
 
 	bool extensionSupported = checkDeviceExtensionSupport(physicalDevice);
 
-	return indices.isValid() && extensionSupported;
+	bool swapChainValid = false;
+
+	if (extensionSupported) {
+		SwapChainDetails swapChainDetails = this->getSwapChainDetails(physicalDevice);
+		swapChainValid = !swapChainDetails.presentationModes.empty() && !swapChainDetails.formats.empty();
+	}
+
+	return indices.isValid() && extensionSupported && swapChainValid;
 }
