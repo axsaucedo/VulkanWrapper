@@ -148,6 +148,19 @@ void VulkanRenderer::createSurface()
 	}
 }
 
+void VulkanRenderer::createSwapChain()
+{
+	// Get Swap chain details so we can pick the best settings
+	SwapChainDetails swapChainDetails = getSwapChainDetails(this->mainDevice.physicalDevice);
+
+	// 1. CHOOSE BEST SURFACE FORMAT
+
+
+	// 2. CHOOSE BEST PRESENTATION MODE
+
+	// 3. CHOOSE EBST SWAP CHAIN IMAGE RESOLUTION
+}
+
 void VulkanRenderer::getPhysicalDevice()
 {
 	// Enumerate physical devices the vkInstance can access
@@ -322,4 +335,38 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice physicalDevice)
 	}
 
 	return indices.isValid() && extensionSupported && swapChainValid;
+}
+
+
+// Best format is subjective but for us this is the definition:
+// * Format : VK_FORMAT_R8G8B8A8_UNORM
+// * colorSpace : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+VkSurfaceFormatKHR VulkanRenderer::chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats)
+{
+	// List returns undefined if all are supported, so for simplicity we can just return the values we want
+	if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
+
+	for (const VkSurfaceFormatKHR& format : formats) {
+		if ((format.format == VK_FORMAT_R8G8B8A8_UNORM) || (format.format == VK_FORMAT_B8G8R8A8_UNORM)) {
+			return format;
+		}
+	}
+
+	// If we couldn't find the most optimal ones for us, we will just return the first one in list
+	return formats[0];
+}
+
+VkPresentModeKHR VulkanRenderer::chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes)
+{
+	for (const VkPresentModeKHR& presentationMode : presentationModes) {
+		if (presentationMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			return presentationMode;
+		}
+	}
+
+	// As part of vulkan spec this should always have to be available
+	return VK_PRESENT_MODE_FIFO_KHR;
 }

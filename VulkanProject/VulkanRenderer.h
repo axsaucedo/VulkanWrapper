@@ -38,6 +38,7 @@ private:
 	void createInstance();
 	void createLogicalDevice();
 	void createSurface();
+	void createSwapChain();
 
 	// - Get Functions
 	void getPhysicalDevice();
@@ -50,5 +51,9 @@ private:
 	bool checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice);
 	bool checkDeviceSuitable(VkPhysicalDevice physicalDevice);
+
+	// - Choose functions
+	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+	VkPresentModeKHR chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes);
 };
 
