@@ -17,8 +17,8 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		this->getPhysicalDevice();
 		std::cout << "Creating logical device" << std::endl;
 		this->createLogicalDevice();
-		std::cout << "Creating surface" << std::endl;
-		this->createSurface();
+		std::cout << "Creating swapchain" << std::endl;
+		this->createSwapChain();
 	}
 	catch (const std::runtime_error& e) {
 		std::cout << "ERROR" << e.what() << std::endl;
@@ -26,11 +26,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		return EXIT_FAILURE;
 	}
 
+	std::cout << "Success init" << std::endl;
 	return 0;
 }
 
 void VulkanRenderer::cleanup()
 {
+	for (SwapchainImage image : swapChainImages) {
+		vkDestroyImage(this->mainDevice.logicalDevice, image.imageView, nullptr);
+	}
+	vkDestroySwapchainKHR(this->mainDevice.logicalDevice, swapchain, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyDevice(this->mainDevice.logicalDevice, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -154,11 +159,89 @@ void VulkanRenderer::createSwapChain()
 	SwapChainDetails swapChainDetails = getSwapChainDetails(this->mainDevice.physicalDevice);
 
 	// 1. CHOOSE BEST SURFACE FORMAT
-
+	VkSurfaceFormatKHR surfaceFormat = this->chooseBestSurfaceFormat(swapChainDetails.formats);
 
 	// 2. CHOOSE BEST PRESENTATION MODE
+	VkPresentModeKHR presentMode = this->chooseBestPresentationMode(swapChainDetails.presentationModes);
 
 	// 3. CHOOSE EBST SWAP CHAIN IMAGE RESOLUTION
+	VkExtent2D extent = this->chooseSwapExtent(swapChainDetails.surfaceCapabilities);
+
+	// How many images are in the swap chain ? Get one more than mmin to allow tripple buffering
+	uint32_t imageCount = swapChainDetails.surfaceCapabilities.minImageCount + 1;
+
+	// If image count higher than the max then clamp down to max as otherwise it would exceed limit
+	// If it is 0  then it is limitless
+	if (swapChainDetails.surfaceCapabilities.maxImageCount > 0
+			&& swapChainDetails.surfaceCapabilities.maxImageCount < imageCount) {
+		imageCount = swapChainDetails.surfaceCapabilities.maxImageCount;
+	}
+
+	// Creation info for swapchain
+	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
+	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapChainCreateInfo.surface = this->surface;
+	swapChainCreateInfo.imageFormat = surfaceFormat.format;
+	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
+	swapChainCreateInfo.presentMode = presentMode;
+	swapChainCreateInfo.imageExtent = extent;
+	swapChainCreateInfo.minImageCount = imageCount;
+	swapChainCreateInfo.imageArrayLayers = 1; // Number of layers for each image in chain
+	swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
+	swapChainCreateInfo.preTransform = swapChainDetails.surfaceCapabilities.currentTransform;
+	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapChainCreateInfo.clipped = VK_TRUE; // Whether to clip part of images not on screen (eg behind another window off screen)
+
+	// Get queue family indices
+	QueueFamilyIndices indices = getQueueFamilies(mainDevice.physicalDevice);
+
+	// If graphics and presentation families are different, then swapchain must let images be shared between families
+	if (indices.graphicsFamily != indices.presentationFamily)
+	{
+		// Queues to share between
+		uint32_t queueFamilyIndices[] = {
+			(uint32_t)indices.graphicsFamily,
+			(uint32_t)indices.presentationFamily
+		};
+
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // Image share handling
+		swapChainCreateInfo.queueFamilyIndexCount = 2; // Number of queues to share images between
+		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices; // Array of queues to share between
+	}
+	else {
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapChainCreateInfo.queueFamilyIndexCount = 0;
+		swapChainCreateInfo.pQueueFamilyIndices = nullptr;
+	}
+
+	// If old swap chain been destroyed and this one replaces it, then link old one to quickly hand over responsibilities
+	swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+
+	VkResult result = vkCreateSwapchainKHR(this->mainDevice.logicalDevice, &swapChainCreateInfo, nullptr, &this->swapchain);
+
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create swap function");
+	}
+
+	// Storing for later reference
+	this->swapChainImageFormat = surfaceFormat.format;
+	this->swapChainExtent = extent;
+
+	uint32_t swapChainImageCount;
+	vkGetSwapchainImagesKHR(this->mainDevice.logicalDevice, this->swapchain, &swapChainImageCount, nullptr);
+
+	std::vector<VkImage> images(swapChainImageCount);
+	vkGetSwapchainImagesKHR(this->mainDevice.logicalDevice, this->swapchain, &swapChainImageCount, images.data());
+	
+	for (VkImage image : images) {
+		// store full value of image explicitly
+		SwapchainImage swapChainImage = {};
+		swapChainImage.image = image;
+		swapChainImage.imageView = this->createImageView(image, swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		swapChainImages.push_back(swapChainImage);
+	}
 }
 
 void VulkanRenderer::getPhysicalDevice()
@@ -369,4 +452,60 @@ VkPresentModeKHR VulkanRenderer::chooseBestPresentationMode(const std::vector<Vk
 
 	// As part of vulkan spec this should always have to be available
 	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D VulkanRenderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+	// If current extent is at numeric limits, then extent can vary. Otherwise it is the size of window
+	if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+		return surfaceCapabilities.currentExtent;
+	}
+	else {
+		// If value can vary, we need to set manually to the size of the window
+		int width, height;
+
+		// We want to get the size of the window for the buffer size
+		glfwGetFramebufferSize(this->window, &width, &height);
+
+		// Create new extent using window size
+		VkExtent2D newExtent = {};
+		newExtent.width = static_cast<uint32_t>(width);
+		newExtent.height = static_cast<uint32_t>(height);
+
+		// Surface also defines max and min, so makes sure within boundaries by clamping val
+		newExtent.width = std::max(
+			surfaceCapabilities.maxImageExtent.width,
+			std::min(surfaceCapabilities.maxImageExtent.width, newExtent.width));
+		newExtent.height = std::max(
+			surfaceCapabilities.maxImageExtent.height,
+			std::min(surfaceCapabilities.maxImageExtent.height, newExtent.height));
+	}
+}
+
+VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+{
+	VkImageViewCreateInfo viewCreateInfo = {};
+	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewCreateInfo.image = image; // Image to create view for
+	viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // Type of image (1D, 2D, Cube, etc)
+	viewCreateInfo.format = format; // Format of image data
+	viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY; // Allows remappingof rgba components to other rgba values
+	viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	// Subresources allow the view to view only a part of an image
+	viewCreateInfo.subresourceRange.aspectMask = aspectFlags; // Which aspect of image to view (eg COLOR_BIT for viewing color)
+	viewCreateInfo.subresourceRange.baseMipLevel = 0; // Start mipmap level to view from
+	viewCreateInfo.subresourceRange.levelCount = 1; // Number of mipmap levels to view
+	viewCreateInfo.subresourceRange.baseArrayLayer = 0; // Start array level to view from
+	viewCreateInfo.subresourceRange.layerCount = 1; // Number of array levels to view
+
+	// Create image view and return it
+	VkImageView imageView;
+	VkResult result = vkCreateImageView(this->mainDevice.logicalDevice, &viewCreateInfo, nullptr, &imageView);
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create an image view");
+	}
+	return imageView;
 }

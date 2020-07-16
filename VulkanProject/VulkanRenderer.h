@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 #include <set>
+#include <algorithm>
 
 #include "Utilities.h"
 
@@ -24,6 +25,7 @@ private:
 	GLFWwindow* window;
 
 	// Vulkan Components
+	// - Main
 	VkInstance instance;
 	struct {
 		VkPhysicalDevice physicalDevice;
@@ -32,6 +34,12 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentationQueue;
 	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
+	std::vector<SwapchainImage> swapChainImages;
+
+	// - Utility
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	// Vulkan Functions
 	// - Creation functions
@@ -55,5 +63,9 @@ private:
 	// - Choose functions
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 	VkPresentModeKHR chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+	// - Create functions
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 };
 
