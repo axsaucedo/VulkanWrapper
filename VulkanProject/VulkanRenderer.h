@@ -47,6 +47,7 @@ private:
 	void createLogicalDevice();
 	void createSurface();
 	void createSwapChain();
+	void createGraphicsPipeline();
 
 	// - Get Functions
 	void getPhysicalDevice();
@@ -67,5 +68,6 @@ private:
 
 	// - Create functions
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 };
 
