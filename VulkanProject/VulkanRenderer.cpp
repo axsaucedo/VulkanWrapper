@@ -32,8 +32,8 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::cleanup()
 {
-	for (SwapchainImage image : swapChainImages) {
-		vkDestroyImage(this->mainDevice.logicalDevice, image.imageView, nullptr);
+	for (auto image : swapChainImages) {
+		vkDestroyImageView(this->mainDevice.logicalDevice, image.imageView, nullptr);
 	}
 	vkDestroySwapchainKHR(this->mainDevice.logicalDevice, swapchain, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
