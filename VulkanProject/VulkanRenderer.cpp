@@ -343,8 +343,8 @@ void VulkanRenderer::createGraphicsPipeline()
 	// Fragment stage creation information
 	VkPipelineShaderStageCreateInfo fragmentShaderCreateInfo = {};
 	fragmentShaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragmentShaderCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT; // Shader stage name
-	fragmentShaderCreateInfo.module = vertexShaderModule; // Shader module to be used by stage
+	fragmentShaderCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT; // Shader stage name
+	fragmentShaderCreateInfo.module = fragmentShaderModule; // Shader module to be used by stage
 	fragmentShaderCreateInfo.pName = "main"; // Name of entry point function in shader file
 
 	// Put shader stage creation info in to array
