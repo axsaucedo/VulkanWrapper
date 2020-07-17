@@ -51,5 +51,6 @@ static std::vector<char> readFile(const std::string& filename) {
 
 	// Close stream
 	file.close();
+
 	return fileBuffer;
 }

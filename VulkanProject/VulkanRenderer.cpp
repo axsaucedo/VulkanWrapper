@@ -279,7 +279,7 @@ void VulkanRenderer::createRenderPass()
 
 	// Information about a particualr subpass the render pass is using
 	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE; // Pipeline type subpass is to be bound to
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Pipeline type subpass is to be bound to
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colourAttachmentReference;
 
@@ -318,7 +318,7 @@ void VulkanRenderer::createRenderPass()
 	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	renderPassCreateInfo.pDependencies = subpassDependencies.data();
 
-	VkResult result = vkCreateRenderPass(this->mainDevice.logicalDevice, &renderPassCreateInfo, nullptr, &renderPass);
+	VkResult result = vkCreateRenderPass(this->mainDevice.logicalDevice, &renderPassCreateInfo, nullptr, &this->renderPass);
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create render pass");
 	}
