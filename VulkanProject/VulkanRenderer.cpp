@@ -6,6 +6,52 @@ VulkanRenderer::VulkanRenderer()
 
 int VulkanRenderer::init(GLFWwindow* newWindow)
 {
+	// Summary of what is done in this function:
+	//
+	//    this->createInstance()
+	//    * First we create the vulkan instance
+	//    
+	//    this->createSurface();
+	//    * we create a surface which is what we will be drawing to which is presented to the screen
+	//    
+	//    this->getPhysicalDevice();
+	//    * We get access to our chosen physical device (and make sure the device is compatible)
+	//    
+	//    this->createLogicalDevice();
+	//    * We then create the logical device that can interface our physical device 
+	//    
+	//    this->createSwapchain();
+	//    * Then we create a set of images in the swapchain, which we will be switching across, one to draw to and one to present to the surface
+	//    
+	//    this->createRenderPass();
+	//    * Then we define the renderpass, which is what we will be calling essentially. Which we pass to renderpass and then start drawing
+	//    
+	//    this->createGraphicsPipeline();
+	//    * Then we careate a graphics pipeline which we connect to that renderpass. The graphics pipeline will perform the draw operations
+	//    * and the renderpass will pass those draw operations to the framebuffer 
+	//    
+	//    this->createFramebuffers();
+	//    * We create the framebuffer which is the component that will receive the data from the renderpass
+	//    
+	//    this->createCommandPool();
+	//    * We now have to create some commands that can actually specify what can be done
+	//    * The command pool is the memory pool allocated for the commands to be added
+	//    
+	//    this->createCommandBuffers();
+	//    * The command buffers actualyl have the commands
+	//    
+	//    this->recordCommands();
+	//    * We are able to record the commands here (which are the steps to be carried out ad the commands themselves)
+	//    * The commands say to start a specific renderpass with a specific pipeline and then to draw a triangle (or any relevant). When it does that it will draw from the graphics pipeline specified through the renderpass into the buffer
+	//    
+	//    this->createSynchronization();
+	//    * Finally we create the locks that will be used to ensure that when the swapchain images are presented in the surface, these are done in order (by requesting locks)
+	//    
+	//    ...
+	//    while True...
+	//        draw()
+	//    * Finally we are able to swap out the images on the swapchain so it's presented into the surface so it goes into the screen
+
 	this->window = newWindow;
 	
 	try {
