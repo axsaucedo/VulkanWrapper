@@ -46,6 +46,9 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::cleanup()
 {
+	// Wait until no actions are being run until destroying
+	vkDeviceWaitIdle(this->mainDevice.logicalDevice);
+
 	vkDestroySemaphore(this->mainDevice.logicalDevice, this->renderFinished, nullptr);
 	vkDestroySemaphore(this->mainDevice.logicalDevice, this->imageAvailable, nullptr);
 	vkDestroyCommandPool(this->mainDevice.logicalDevice, this->graphicsCommandPool, nullptr);
