@@ -34,6 +34,7 @@ int main()
 	std::cout << "Running" << std::endl;
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+		vulkanRenderer.draw();
 	}
 
 	std::cout << "Cleaning up" << std::endl;

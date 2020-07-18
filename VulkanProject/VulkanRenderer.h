@@ -19,6 +19,7 @@ public:
 
 	int init(GLFWwindow* newWindow);
 	void cleanup();
+	void draw();
 
 	~VulkanRenderer();
 
@@ -52,6 +53,10 @@ private:
 	VkFormat swapchainImageFormat;
 	VkExtent2D swapchainExtent;
 
+	// - Synchronisation
+	VkSemaphore imageAvailable;
+	VkSemaphore renderFinished;
+
 	// Vulkan Functions
 	// - Creation functions
 	void createInstance();
@@ -63,6 +68,7 @@ private:
 	void createFramebuffers();
 	void createCommandPool();
 	void createCommandBuffers();
+	void createSynchronization();
 
 	// - Record Functions
 	void recordCommands();
