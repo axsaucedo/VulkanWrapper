@@ -36,7 +36,8 @@ private:
 	VkQueue presentationQueue;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
-	std::vector<SwapchainImage> swapChainImages;
+	std::vector<SwapchainImage> swapchainImages;
+	std::vector<VkFramebuffer> swapchainFramebuffers;
 
 	// - Pipeline
 	VkPipeline graphicsPipeline;
@@ -44,24 +45,25 @@ private:
 	VkRenderPass renderPass;
 
 	// - Utility
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
+	VkFormat swapchainImageFormat;
+	VkExtent2D swapchainExtent;
 
 	// Vulkan Functions
 	// - Creation functions
 	void createInstance();
 	void createLogicalDevice();
 	void createSurface();
-	void createSwapChain();
+	void createSwapchain();
 	void createRenderPass();
 	void createGraphicsPipeline();
+	void createFramebuffers();
 
 	// - Get Functions
 	void getPhysicalDevice();
 
 	// - Getters
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice physicalDevice);
-	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
+	SwapchainDetails getSwapchainDetails(VkPhysicalDevice device);
 
 	// - Utility functions
 	bool checkInstanceExtensionSupport(std::vector<const char*>* checkExtensions);
