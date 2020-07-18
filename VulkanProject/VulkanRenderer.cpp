@@ -23,6 +23,12 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		this->createRenderPass();
 		std::cout << "Creating graphics pipeline" << std::endl;
 		this->createGraphicsPipeline();
+		std::cout << "Creating Command Pool" << std::endl;
+		this->createCommandPool();
+		std::cout << "Creating Command Buffers" << std::endl;
+		this->createCommandBuffers();
+		std::cout << "Recording commands" << std::endl;
+		this->recordCommands();
 	}
 	catch (const std::runtime_error& e) {
 		std::cout << "ERROR" << e.what() << std::endl;
@@ -36,6 +42,10 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::cleanup()
 {
+	vkDestroyCommandPool(this->mainDevice.logicalDevice, this->graphicsCommandPool, nullptr);
+	for (auto framebuffer : this->swapchainFramebuffers) {
+		vkDestroyFramebuffer(this->mainDevice.logicalDevice, framebuffer, nullptr);
+	}
 	vkDestroyPipeline(this->mainDevice.logicalDevice, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(this->mainDevice.logicalDevice, pipelineLayout, nullptr);
 	vkDestroyRenderPass(this->mainDevice.logicalDevice, renderPass, nullptr);
@@ -502,6 +512,118 @@ void VulkanRenderer::createGraphicsPipeline()
 
 void VulkanRenderer::createFramebuffers()
 {
+	// Resize framebuffer count to equal to swapchain image count
+	swapchainFramebuffers.resize(swapchainImages.size());
+
+	// Create a framebuffer for eachi swap chain image
+	for (size_t i = 0; i < swapchainFramebuffers.size(); i++) {
+		std::array<VkImageView, 1> attachments = {
+			swapchainImages[i].imageView
+		};
+
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass = this->renderPass; // render pass layout the framebuffer will be used with
+		framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferCreateInfo.pAttachments = attachments.data(); // List of attachments (1:1 with render pass)
+		framebufferCreateInfo.width = this->swapchainExtent.width; 
+		framebufferCreateInfo.height = this->swapchainExtent.height; 
+		framebufferCreateInfo.layers = 1;
+
+		VkResult result = vkCreateFramebuffer(this->mainDevice.logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create a framebuffer");
+		}
+	}
+}
+
+void VulkanRenderer::createCommandPool()
+{
+	// Get indices of queue families from device
+	QueueFamilyIndices queueFamilyIndices = this->getQueueFamilies(this->mainDevice.physicalDevice);
+
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily; // Queue family that buffers from this command pool will use
+
+	// Create a graphics queue family command pool
+	VkResult result = vkCreateCommandPool(this->mainDevice.logicalDevice, &poolInfo, nullptr, &this->graphicsCommandPool);
+
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create command pool");
+	}
+}
+
+void VulkanRenderer::createCommandBuffers()
+{
+	// Resize command buffer count to have one for each framebuffer
+	this->commandBuffers.resize(this->swapchainFramebuffers.size());
+
+	// We're not creating memory, we're just allocating it (hence why it's an allocate instead of create)
+	VkCommandBufferAllocateInfo cbAllocInfo = {};
+	cbAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cbAllocInfo.commandPool = this->graphicsCommandPool;
+	// vkCmdExecuteCommands(buffer) <- primary = executed by queue, secondary = executed by primary
+	// PRIMARIY: buffer you submit directly to the quuee, can't be called by other buffers
+	// SECONDARY: Buffer can't be called directly, can be called from other buffers via "vkCmdExecuteCommands when reading commands
+	cbAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; 
+	cbAllocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+	VkResult result =  vkAllocateCommandBuffers(this->mainDevice.logicalDevice, &cbAllocInfo, commandBuffers.data());
+
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to allocate command bfufers");
+	}
+}
+
+void VulkanRenderer::recordCommands()
+{
+	// Information about how to begin each command buffer
+	VkCommandBufferBeginInfo bufferBeginInfo = {};
+	bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	bufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // Buffer can be resubmitted when it has already been submitted and is awaiting execution
+
+	// Information about how to begin a render pass (only needed for graphical applications)
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.renderPass = this->renderPass; // Render pass to begin
+	renderPassBeginInfo.renderArea.offset = { 0, 0 }; // Start point of render pass in pixels (in case we want to star in mid of screen)
+	renderPassBeginInfo.renderArea.extent = swapchainExtent; // Size of region to run render pass on (starting at offset)
+	VkClearValue clearValues[] = {
+		{0.6f, 0.65f, 0.4f, 1.0f}
+	};
+	renderPassBeginInfo.pClearValues = clearValues; // List of clear values 
+	renderPassBeginInfo.clearValueCount = 1;
+	
+	for (size_t i = 0; i < this->commandBuffers.size(); i++) {
+		renderPassBeginInfo.framebuffer = this->swapchainFramebuffers[i];
+			
+		// Start recording commands to comamnd buffer
+		VkResult result = vkBeginCommandBuffer(this->commandBuffers[i], &bufferBeginInfo);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to start recording a command buffer");
+		}
+		// Begin render pass
+			vkCmdBeginRenderPass(this->commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			// Bind pipeline to be used in render pass
+			vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+
+			// Execute pipeline - Explanation on parameters (in order as per func):
+			// Commandbuffer: Command buffer to attach draw command to
+			// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
+			// Instance count: Number of instances to draw
+			// First vertex: Location of the first vertex for the first one
+			// FIrst instance: Which instance number to start at
+			vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
+
+			vkCmdEndRenderPass(this->commandBuffers[i]);
+		// End render pass
+
+		result = vkEndCommandBuffer(this->commandBuffers[i]);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to stop recording a command buffer");
+		}
+	}
 }
 
 void VulkanRenderer::getPhysicalDevice()
