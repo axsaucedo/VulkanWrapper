@@ -63,6 +63,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		this->getPhysicalDevice();
 		std::cout << "Creating logical device" << std::endl;
 		this->createLogicalDevice();
+		std::cout << "Creating swapchain" << std::endl;
+		this->createSwapchain();
+		std::cout << "Creating render pass" << std::endl;
+		this->createRenderPass();
+		std::cout << "Creating graphics pipeline" << std::endl;
+		this->createGraphicsPipeline();
+		std::cout << "Creating framebuffers" << std::endl;
+		this->createFramebuffers();
+		std::cout << "Creating command pool" << std::endl;
+		this->createCommandPool();
 
 		// Create a mesh
 		std::vector<Vertex> meshVertices = {
@@ -74,18 +84,13 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 			{{-0.4, -0.4, 0.0}, {1.0f, 1.0f, 0.0f}},
 			{{0.4, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}},
 		};
-		firstMesh = Mesh(this->mainDevice.physicalDevice, this->mainDevice.logicalDevice, &meshVertices);
+		firstMesh = Mesh(
+			this->mainDevice.physicalDevice,
+			this->mainDevice.logicalDevice,
+			this->graphicsQueue,
+			this->graphicsCommandPool,
+			&meshVertices);
 
-		std::cout << "Creating swapchain" << std::endl;
-		this->createSwapchain();
-		std::cout << "Creating render pass" << std::endl;
-		this->createRenderPass();
-		std::cout << "Creating graphics pipeline" << std::endl;
-		this->createGraphicsPipeline();
-		std::cout << "Creating framebuffers" << std::endl;
-		this->createFramebuffers();
-		std::cout << "Creating command pool" << std::endl;
-		this->createCommandPool();
 		std::cout << "Creating command buffers" << std::endl;
 		this->createCommandBuffers();
 		std::cout << "Recording commands" << std::endl;
