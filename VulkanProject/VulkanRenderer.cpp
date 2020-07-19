@@ -789,7 +789,12 @@ void VulkanRenderer::recordCommands()
 			// After we bind the pipeline we can bind our vertex buffers
 			VkBuffer vertexBuffers[] = { firstMesh.getVertexBuffer() }; // Buffers to bind
 			VkDeviceSize offsets[] = { 0 }; // Offsets into buffers being bound (one for each of the buffers)
-			// Command to bind vertex buffer before drawing with them
+			// Command to bind vertex buffer before drawing with them - parameter defs:
+			// Command buffer: Command buffer to bind the vertex buffers to 
+			// firstBinding: The binding based on the shader which is (binding = 0 , locaiton = <x>) by default
+			// bindingCount: How many bindings to iterate through (in this case we only have 1)
+			// pBuffers: This are the vertex buffers that we defined in the create function
+			// pOffsets: This are the offsets for each of the buffers
 			vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets); 
 
 			// Execute pipeline - Explanation on parameters (in order as per func):
