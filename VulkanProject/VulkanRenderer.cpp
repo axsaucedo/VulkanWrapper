@@ -77,10 +77,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		// -- Create a mesh --
 		// Vertex Data
 		std::vector<Vertex> meshVertices = {
-			{{0.4, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
-			{{0.4, 0.4, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
-			{{-0.4, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
-			{{-0.4, -0.4, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
+			{{-0.1, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
+			{{-0.1, 0.4, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
+			{{-0.9, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
+			{{-0.9, -0.4, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
+		};
+		std::vector<Vertex> meshVertices2 = {
+			{{0.9, -0.3, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
+			{{0.9, 0.1, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
+			{{0.1, 0.3, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
+			{{0.1, -0.3, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
 		};
 		// Index Data
 		std::vector<uint32_t> meshIndices = {
@@ -88,13 +94,23 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 			2, 3, 0
 		};
 		// Mesh
-		firstMesh = Mesh(
+		Mesh firstMesh = Mesh(
 			this->mainDevice.physicalDevice,
 			this->mainDevice.logicalDevice,
 			this->graphicsQueue,
 			this->graphicsCommandPool,
 			&meshVertices,
 			&meshIndices);
+		Mesh secondMesh = Mesh(
+			this->mainDevice.physicalDevice,
+			this->mainDevice.logicalDevice,
+			this->graphicsQueue,
+			this->graphicsCommandPool,
+			&meshVertices2,
+			&meshIndices);
+
+		this->meshList.push_back(firstMesh);
+		this->meshList.push_back(secondMesh);
 
 		std::cout << "Creating command buffers" << std::endl;
 		this->createCommandBuffers();
@@ -118,7 +134,9 @@ void VulkanRenderer::cleanup()
 	// Wait until no actions are being run until destroying
 	vkDeviceWaitIdle(this->mainDevice.logicalDevice);
 
-	firstMesh.destroyBuffers();
+	for (size_t i = 0; i < this->meshList.size(); i++) {
+		this->meshList[i].destroyBuffers();
+	}
 
 	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++)
 	{
@@ -797,29 +815,32 @@ void VulkanRenderer::recordCommands()
 			vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
 
 			// After we bind the pipeline we can bind our vertex buffers
-			VkBuffer vertexBuffers[] = { firstMesh.getVertexBuffer() }; // Buffers to bind
-			VkDeviceSize offsets[] = { 0 }; // Offsets into buffers being bound (one for each of the buffers)
-			// Command to bind vertex buffer before drawing with them - parameter defs:
-			// Command buffer: Command buffer to bind the vertex buffers to 
-			// firstBinding: The binding based on the shader which is (binding = 0 , locaiton = <x>) by default
-			// bindingCount: How many bindings to iterate through (in this case we only have 1)
-			// pBuffers: This are the vertex buffers that we defined in the create function
-			// pOffsets: This are the offsets for each of the buffers
-			vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets); 
 
-			// Binding mesh index buffers (note that we can only bind one index buffer - for multiple vertex buffers)
-			vkCmdBindIndexBuffer(this->commandBuffers[i], firstMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			for (size_t j = 0; j < this->meshList.size(); j++) {
+				VkBuffer vertexBuffers[] = { this->meshList[j].getVertexBuffer() }; // Buffers to bind
+				VkDeviceSize offsets[] = { 0 }; // Offsets into buffers being bound (one for each of the buffers)
+				// Command to bind vertex buffer before drawing with them - parameter defs:
+				// Command buffer: Command buffer to bind the vertex buffers to 
+				// firstBinding: The binding based on the shader which is (binding = 0 , locaiton = <x>) by default
+				// bindingCount: How many bindings to iterate through (in this case we only have 1)
+				// pBuffers: This are the vertex buffers that we defined in the create function
+				// pOffsets: This are the offsets for each of the buffers
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
-			// Execute pipeline - Explanation on parameters (in order as per func):
-			// Commandbuffer: Command buffer to attach draw command to
-			// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
-			// Instance count: Number of instances to draw
-			// First vertex: Location of the first vertex for the first one
-			// FIrst instance: Which instance number to start at
-			// However we're no longer using the vertex directly, we use the index buffers directly now, so see below
-			//vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+				// Binding mesh index buffers (note that we can only bind one index buffer - for multiple vertex buffers)
+				vkCmdBindIndexBuffer(this->commandBuffers[i], this->meshList[j].getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(this->commandBuffers[i], firstMesh.getIndexCount(), 1, 0, 0, 0);
+				// Execute pipeline - Explanation on parameters (in order as per func):
+				// Commandbuffer: Command buffer to attach draw command to
+				// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
+				// Instance count: Number of instances to draw
+				// First vertex: Location of the first vertex for the first one
+				// FIrst instance: Which instance number to start at
+				// However we're no longer using the vertex directly, we use the index buffers directly now, so see below
+				//vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+
+				vkCmdDrawIndexed(this->commandBuffers[i], this->meshList[j].getIndexCount(), 1, 0, 0, 0);
+			}
 
 			vkCmdEndRenderPass(this->commandBuffers[i]);
 		// End render pass
