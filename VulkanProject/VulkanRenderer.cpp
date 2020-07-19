@@ -74,22 +74,27 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		std::cout << "Creating command pool" << std::endl;
 		this->createCommandPool();
 
-		// Create a mesh
+		// -- Create a mesh --
+		// Vertex Data
 		std::vector<Vertex> meshVertices = {
-			{{0.4, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}},
-			{{0.4, 0.4, 0.0}, {0.0f, 1.0f, 0.0f}},
-			{{-0.4, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}},
-
-			{{-0.4, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}},
-			{{-0.4, -0.4, 0.0}, {1.0f, 1.0f, 0.0f}},
-			{{0.4, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}},
+			{{0.4, -0.4, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
+			{{0.4, 0.4, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
+			{{-0.4, 0.4, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
+			{{-0.4, -0.4, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
 		};
+		// Index Data
+		std::vector<uint32_t> meshIndices = {
+			0, 1, 2,
+			2, 3, 0
+		};
+		// Mesh
 		firstMesh = Mesh(
 			this->mainDevice.physicalDevice,
 			this->mainDevice.logicalDevice,
 			this->graphicsQueue,
 			this->graphicsCommandPool,
-			&meshVertices);
+			&meshVertices,
+			&meshIndices);
 
 		std::cout << "Creating command buffers" << std::endl;
 		this->createCommandBuffers();
@@ -113,7 +118,7 @@ void VulkanRenderer::cleanup()
 	// Wait until no actions are being run until destroying
 	vkDeviceWaitIdle(this->mainDevice.logicalDevice);
 
-	firstMesh.destroyVertexBuffer();
+	firstMesh.destroyBuffers();
 
 	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++)
 	{
@@ -802,13 +807,19 @@ void VulkanRenderer::recordCommands()
 			// pOffsets: This are the offsets for each of the buffers
 			vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets); 
 
+			// Binding mesh index buffers (note that we can only bind one index buffer - for multiple vertex buffers)
+			vkCmdBindIndexBuffer(this->commandBuffers[i], firstMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
 			// Execute pipeline - Explanation on parameters (in order as per func):
 			// Commandbuffer: Command buffer to attach draw command to
 			// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
 			// Instance count: Number of instances to draw
 			// First vertex: Location of the first vertex for the first one
 			// FIrst instance: Which instance number to start at
-			vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+			// However we're no longer using the vertex directly, we use the index buffers directly now, so see below
+			//vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+
+			vkCmdDrawIndexed(this->commandBuffers[i], firstMesh.getIndexCount(), 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(this->commandBuffers[i]);
 		// End render pass

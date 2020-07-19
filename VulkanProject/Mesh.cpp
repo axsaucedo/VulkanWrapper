@@ -10,12 +10,15 @@ Mesh::Mesh(
 		VkDevice newDevice,
 		VkQueue transferQueue,
 		VkCommandPool transferCommandPool,
-		std::vector<Vertex>* vertices)
+		std::vector<Vertex>* vertices,
+		std::vector<uint32_t>* indices)
 {
 	this->vertexCount = vertices->size();
+	this->indexCount = indices->size();
 	this->physicalDevice = newPhysicalDevice;
 	this->device = newDevice;
 	this->createVertexBuffer(transferQueue, transferCommandPool, vertices);
+	this->createIndexBuffer(transferQueue, transferCommandPool, indices);
 }
 
 int Mesh::getVertexCount()
@@ -28,10 +31,22 @@ VkBuffer Mesh::getVertexBuffer()
 	return this->vertexBuffer;
 }
 
-void Mesh::destroyVertexBuffer()
+int Mesh::getIndexCount()
+{
+	return this->indexCount;
+}
+
+VkBuffer Mesh::getIndexBuffer()
+{
+	return this->indexBuffer;
+}
+
+void Mesh::destroyBuffers()
 {
 	vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
 	vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
+	vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
+	vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 }
 
 Mesh::~Mesh()
@@ -74,4 +89,34 @@ void Mesh::createVertexBuffer(
 	// Clean up staging buffer parts
 	vkDestroyBuffer(this->device, stagingBuffer, nullptr);
 	vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+}
+
+void Mesh::createIndexBuffer(VkQueue transferQueue, VkCommandPool transferCommandPool, std::vector<uint32_t>* indices)
+{
+	// Get size of buffer needed for indeices
+	VkDeviceSize bufferSize = sizeof(uint32_t) * indices->size();
+
+	// Temporary buffer to "stage" index data before transfering to GPU
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(this->physicalDevice, this->device, bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&stagingBuffer,
+		&stagingBufferMemory);
+
+	// Map memory to index buffer
+	void* data;
+	vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices->data(), (size_t)bufferSize);
+	vkUnmapMemory(this->device, stagingBufferMemory);
+
+	// Create buffer for INDEX data on GPU access only area
+	createBuffer(this->physicalDevice, this->device, bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+		&this->indexBuffer, &this->indexBufferMemory);
+
+	// Copy from staging buffer to GPU access buffer
+	copyBuffer(this->device, transferQueue, transferCommandPool, stagingBuffer, this->indexBuffer, bufferSize);
 }
