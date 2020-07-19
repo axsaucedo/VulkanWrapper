@@ -1050,6 +1050,8 @@ VkExtent2D VulkanRenderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surf
 		newExtent.height = std::max(
 			surfaceCapabilities.maxImageExtent.height,
 			std::min(surfaceCapabilities.maxImageExtent.height, newExtent.height));
+
+		return newExtent;
 	}
 }
 
