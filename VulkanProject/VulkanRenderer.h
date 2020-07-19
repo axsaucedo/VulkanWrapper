@@ -10,6 +10,7 @@
 #include <array>
 #include <algorithm>
 
+#include "Mesh.h"
 #include "Utilities.h"
 
 class VulkanRenderer 
@@ -27,6 +28,9 @@ private:
 	GLFWwindow* window;
 
 	int currentFrame = 0;
+
+	// Scene objects
+	Mesh firstMesh;
 
 	// Vulkan Components
 	// - Main
