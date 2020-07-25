@@ -19,6 +19,18 @@ Mesh::Mesh(
 	this->device = newDevice;
 	this->createVertexBuffer(transferQueue, transferCommandPool, vertices);
 	this->createIndexBuffer(transferQueue, transferCommandPool, indices);
+
+	uboModel.model = glm::mat4(1.0f);
+}
+
+void Mesh::setModel(glm::mat4 newModel)
+{
+	this->uboModel.model = newModel;
+}
+
+UboModel Mesh::getModel()
+{
+	return this->uboModel;
 }
 
 int Mesh::getVertexCount()
