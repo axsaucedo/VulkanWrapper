@@ -175,4 +175,6 @@ compile_commands.json
 Debug/
 VulkanProject/Debug/VulkanProject.tlog/
 
+code_*
+
 
