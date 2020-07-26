@@ -1576,6 +1576,10 @@ int VulkanRenderer::createTexture(std::string fileName)
 		width,
 		height);
 
+	// Transition image to be shader readable for shader usage
+	transitionImageLayout(this->mainDevice.logicalDevice, this->graphicsQueue, this->graphicsCommandPool,
+		texImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
 	// Add texture data to vector for reference
 	this->textureImages.push_back(texImage);
 	this->textureImageMemory.push_back(texImageMemory);
