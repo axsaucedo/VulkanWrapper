@@ -61,19 +61,20 @@ private:
 
 	// - Descriptors
 	VkDescriptorSetLayout descriptorSetLayout;
-	
+	VkPushConstantRange pushConstantRange;
+
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
 
 	std::vector<VkBuffer> vpUniformBuffer;
 	std::vector<VkDeviceMemory> vpUniformBufferMemory;
 
-	std::vector<VkBuffer> modelDynamicUniformBuffer;
-	std::vector<VkDeviceMemory> modelDynamicUniformBufferMemory;
-
-	VkDeviceSize minUniformBufferOffset;
-	size_t modelUniformAlignment;
-	UboModel* modelTransferSpace;
+	// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
+	//std::vector<VkBuffer> modelDynamicUniformBuffer;
+	//std::vector<VkDeviceMemory> modelDynamicUniformBufferMemory;
+	//VkDeviceSize minUniformBufferOffset;
+	//size_t modelUniformAlignment;
+	//Model* modelTransferSpace;
 
 	// - Pipeline
 	VkPipeline graphicsPipeline;
@@ -100,6 +101,7 @@ private:
 	void createSwapchain();
 	void createRenderPass();
 	void createDescriptorSetLayout();
+	void createPushConstantRange();
 	void createGraphicsPipeline();
 	void createFramebuffers();
 	void createCommandPool();
@@ -113,13 +115,14 @@ private:
 	void updateUniformBuffers(uint32_t imageIndex);
 
 	// - Record Functions
-	void recordCommands();
+	void recordCommands(uint32_t currentImage);
 
 	// - Get Functions
 	void getPhysicalDevice();
 
-	// - Allocate Functions
-	void allocateDynamicBufferTransferSpace();
+	//// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
+	//// - Allocate Functions
+	//void allocateDynamicBufferTransferSpace();
 
 	// - Getters
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice physicalDevice);

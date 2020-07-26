@@ -20,17 +20,17 @@ Mesh::Mesh(
 	this->createVertexBuffer(transferQueue, transferCommandPool, vertices);
 	this->createIndexBuffer(transferQueue, transferCommandPool, indices);
 
-	uboModel.model = glm::mat4(1.0f);
+	model.model = glm::mat4(1.0f);
 }
 
 void Mesh::setModel(glm::mat4 newModel)
 {
-	this->uboModel.model = newModel;
+	this->model.model = newModel;
 }
 
-UboModel Mesh::getModel()
+Model Mesh::getModel()
 {
-	return this->uboModel;
+	return this->model;
 }
 
 int Mesh::getVertexCount()
