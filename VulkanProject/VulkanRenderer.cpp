@@ -39,8 +39,8 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 			(float)this->swapchainExtent.width / (float)this->swapchainExtent.height,
 			0.1f, 100.0f);
 		this->uboViewProjection.view = glm::lookAt(
-			glm::vec3(0.0f, 0.0f, 2.0f), // Where the camara is
-			glm::vec3(0.0f, 0.0f, 0.0f), // The target / centre (set to origin here)
+			glm::vec3(2.0f, 0.0f, -1.0f), // Where the camara is
+			glm::vec3(0.0f, 0.0f, -4.0f), // The target / centre (set to origin here)
 			glm::vec3(0.0f, 1.0f, 0.0f)); // The nagle of the camera, ie where up value is - in this case up
 		
 		// Vulkan inverts the coordinates, so we need to invert the y coordinate
@@ -123,10 +123,11 @@ void VulkanRenderer::cleanup()
 	// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
 	//_aligned_free(this->modelTransferSpace);
 
-	vkDestroyImageView(this->mainDevice.logicalDevice, this->depthBufferImageMemory, nullptr);
+	vkDestroyImageView(this->mainDevice.logicalDevice, this->depthBufferImageView, nullptr);
 	vkDestroyImage(this->mainDevice.logicalDevice, this->depthBufferImage, nullptr);
 	vkFreeMemory(this->mainDevice.logicalDevice, this->depthBufferImageMemory, nullptr);
 
+	// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
 	vkDestroyDescriptorPool(this->mainDevice.logicalDevice, this->descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(this->mainDevice.logicalDevice, this->descriptorSetLayout, nullptr);
 
