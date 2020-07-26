@@ -227,3 +227,47 @@ static void copyImageBuffer(VkDevice device, VkQueue transferQueue, VkCommandPoo
 	// End and submit buffer to dst buffer
 	endAndSubmitCommandBuffer(device, transferCommandPool, transferQueue, transferCommandBuffer);
 }
+
+static void transitionImageLayout(VkDevice device, VkQueue queue,
+	VkCommandPool commandPool, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
+
+	// Create buffer
+	VkCommandBuffer commandBuffer = beginCommandBuffer(device, commandPool);
+
+	VkImageMemoryBarrier imageMemoryBarrier = {};
+	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout = oldLayout; // Layout to transition from
+	imageMemoryBarrier.newLayout = newLayout; // Layout to transition to
+	imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; // Queue family to trans
+	imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	imageMemoryBarrier.image = image;
+	imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // ASpect of image being altered
+	imageMemoryBarrier.subresourceRange.baseMipLevel = 0; // Firsst mip level to start alteations on
+	imageMemoryBarrier.subresourceRange.levelCount = 1; // Number of mip levels to start from base
+	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0; // First layer to start alterations on
+	imageMemoryBarrier.subresourceRange.layerCount = 1; // Number of layers to alter starting from baseArrayLayer
+
+	VkPipelineStageFlags srcStage;
+	VkPipelineStageFlags dstStage;
+
+	// If transitioning from new image to image ready to receive data do the following if statement
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = 0; // Memory stage transition must happen after this stage (currently set to 0 meaning it doens't matter)
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // THis is the access mask that we want to ensure the transition happens before 
+
+		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+
+	vkCmdPipelineBarrier(
+		commandBuffer,
+		srcStage, dstStage, // pipeline stages (match to src and dst access masks just above)
+		0, // Dependency flags
+		0, nullptr, // Memory barrier count  + data
+		0, nullptr, // Buffer memory barrier count + data
+		1, &imageMemoryBarrier // Image memory barrier count + data
+	);
+
+	// End and submit buffer to dst buffer
+	endAndSubmitCommandBuffer(device, commandPool, queue, commandBuffer);
+}

@@ -1562,6 +1562,10 @@ int VulkanRenderer::createTexture(std::string fileName)
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &texImageMemory);
 
 	// -- Copy data to image
+	// Transition image to be DST for copay operation
+	transitionImageLayout(this->mainDevice.logicalDevice, this->graphicsQueue, this->graphicsCommandPool,
+		texImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
 	// Copy image data 
 	copyImageBuffer(
 		this->mainDevice.logicalDevice,
