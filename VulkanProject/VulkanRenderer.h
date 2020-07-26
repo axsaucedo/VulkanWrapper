@@ -66,6 +66,8 @@ private:
 	VkDeviceMemory depthBufferImageMemory;
 	VkImageView depthBufferImageView;
 
+	VkSampler textureSampler;
+
 	// - Descriptors
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkPushConstantRange pushConstantRange;
@@ -86,6 +88,7 @@ private:
 	// - Assets
 	std::vector<VkImage> textureImages;
 	std::vector<VkDeviceMemory> textureImageMemory;
+	std::vector<VkImageView> textureImageViews;
 
 	// - Pipeline
 	VkPipeline graphicsPipeline;
@@ -119,6 +122,7 @@ private:
 	void createCommandPool();
 	void createCommandBuffers();
 	void createSynchronization();
+	void createTextureSampler();
 
 	void createUniformBuffers();
 	void createDescriptorPool();
@@ -158,6 +162,7 @@ private:
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
+	int createTextureImage(std::string fileName);
 	int createTexture(std::string fileName);
 
 	// - Loader functions
