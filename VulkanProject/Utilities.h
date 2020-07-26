@@ -133,6 +133,52 @@ static void createBuffer(
 	vkBindBufferMemory(device, *buffer, *bufferMemory, 0);
 }
 
+static VkCommandBuffer beginCommandBuffer(VkDevice device, VkCommandPool commandPool) {
+	// Command buffer to hold trasnfer commands
+	VkCommandBuffer commandBuffer;
+
+	// Command buffer details
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = 1;
+
+	// Allocate command buffer from pool
+	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+	// Info to begin the command buffer recod
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // We're only use the comand buffer once, so set i for one time submt
+
+	// Begin recording transfer commands
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+static void endAndSubmitCommandBuffer(VkDevice device, VkCommandPool commandPool, VkQueue queue, VkCommandBuffer commandBuffer) {
+
+	// End commands
+	vkEndCommandBuffer(commandBuffer);
+
+	// Queue submission information
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	// Submit transfer command 
+	// Because we don't have many meshes we can have a simple wait for queue to be done (instead of setting the fences/semaphores)
+	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue);
+
+	// Free temporary command buffer back to pool
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+
+}
+
 static void copyBuffer(
 	VkDevice device,
 	VkQueue transferQueue,
@@ -141,26 +187,8 @@ static void copyBuffer(
 	VkBuffer dstBuffer,
 	VkDeviceSize bufferSize)
 {
-	// Command buffer to hold trasnfer commands
-	VkCommandBuffer transferCommandBuffer;
-
-	// Command buffer details
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = transferCommandPool;
-	allocInfo.commandBufferCount = 1;
-
-	// Allocate command buffer from pool
-	vkAllocateCommandBuffers(device, &allocInfo, &transferCommandBuffer);
-
-	// Info to begin the command buffer recod
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // We're only use the comand buffer once, so set i for one time submt
-
-	// Begin recording transfer commands
-	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+	// Create buffer
+	VkCommandBuffer transferCommandBuffer = beginCommandBuffer(device, transferCommandPool);
 
 	// Region of data to copy from and to
 	VkBufferCopy bufferCopyRegion = {};
@@ -171,21 +199,31 @@ static void copyBuffer(
 	// Command to copy src buffer to dst buffer
 	vkCmdCopyBuffer(transferCommandBuffer, srcBuffer, dstBuffer, 1, &bufferCopyRegion);
 
-	// End commands
-	vkEndCommandBuffer(transferCommandBuffer);
+	// End and submit buffer to dst buffer
+	endAndSubmitCommandBuffer(device, transferCommandPool, transferQueue, transferCommandBuffer);
+}
 
-	// Queue submission information
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &transferCommandBuffer;
-	
-	// Submit transfer command 
-	// Because we don't have many meshes we can have a simple wait for queue to be done (instead of setting the fences/semaphores)
-	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(transferQueue);
+static void copyImageBuffer(VkDevice device, VkQueue transferQueue, VkCommandPool transferCommandPool,
+	VkBuffer srcBuffer, VkImage dstImage, uint32_t width, uint32_t height) {
 
-	// Free temporary command buffer back to pool
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+	// Create buffer
+	VkCommandBuffer transferCommandBuffer = beginCommandBuffer(device, transferCommandPool);
 
+	VkBufferImageCopy imageRegion = {};
+	imageRegion.bufferOffset = 0; // Offset into data
+	imageRegion.bufferRowLength = 0; // Row length of data to calculate data spacing
+	imageRegion.bufferImageHeight = 0; // Image height to calculate data spacing 
+	imageRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Which aspect of image to copy
+	imageRegion.imageSubresource.mipLevel = 0; // Mipmap level to copy
+	imageRegion.imageSubresource.baseArrayLayer = 0; // Starting array layer if there is array
+	imageRegion.imageSubresource.layerCount = 1; // Number of layers to start copy starting at baseArrayLayer
+	imageRegion.imageOffset = { 0, 0, 0 }; // Offset into image as opposed to raw data in bufferOffset
+	imageRegion.imageExtent = { width, height, 1 };
+
+	// Copy buffer to given image
+	vkCmdCopyBufferToImage(transferCommandBuffer, srcBuffer, dstImage,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageRegion);
+
+	// End and submit buffer to dst buffer
+	endAndSubmitCommandBuffer(device, transferCommandPool, transferQueue, transferCommandBuffer);
 }

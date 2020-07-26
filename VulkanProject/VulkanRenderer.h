@@ -13,6 +13,8 @@
 #include <array>
 #include <algorithm>
 
+#include "stb_image.h"
+
 #include "Mesh.h"
 #include "Utilities.h"
 
@@ -80,6 +82,10 @@ private:
 	//VkDeviceSize minUniformBufferOffset;
 	//size_t modelUniformAlignment;
 	//Model* modelTransferSpace;
+
+	// - Assets
+	std::vector<VkImage> textureImages;
+	std::vector<VkDeviceMemory> textureImageMemory;
 
 	// - Pipeline
 	VkPipeline graphicsPipeline;
@@ -151,5 +157,10 @@ private:
 		VkDeviceMemory* imageMemory);
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
+	int createTexture(std::string fileName);
+
+	// - Loader functions
+	stbi_uc* loadTextureFile(std::string fileName, int* width, int* height, VkDeviceSize* imageSize);
 };
 
