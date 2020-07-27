@@ -27,7 +27,7 @@ void initWindow(std::string wName = "Test Window", const int width = 800, const 
 int main() 
 {
 	std::cout << "Init window" << std::endl;
-	initWindow("Test Window", 800, 600);
+	initWindow("Test Window", 1920, 1080);
 
 	std::cout << "Init renderer" << std::endl;
 	if (vulkanRenderer.init(window) == EXIT_FAILURE) {

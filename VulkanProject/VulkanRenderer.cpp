@@ -49,8 +49,6 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		std::cout << "Creating synchronisation" << std::endl;
 		this->createSynchronization();
 
-		int firstTexture = this->createTexture("marble006-color.jpg");
-
 		this->uboViewProjection.projection = glm::perspective(
 			glm::radians(45.0f),
 			(float)this->swapchainExtent.width / (float)this->swapchainExtent.height,
@@ -66,16 +64,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		// -- Create a mesh --
 		// Vertex Data
 		std::vector<Vertex> meshVertices = {
-			{{-0.4, 0.4, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
-			{{-0.4, -0.4, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
-			{{0.4, -0.4, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
-			{{0.4, 0.4, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
+			{{-0.4, 0.4, 0.0}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 0
+			{{-0.4, -0.4, 0.0}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 1
+			{{0.4, -0.4, 0.0}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 2
+			{{0.4, 0.4, 0.0}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 3
 		};
 		std::vector<Vertex> meshVertices2 = {
-			{{-0.25, 0.6, 0.0}, {1.0f, 0.0f, 0.0f}}, // 0
-			{{-0.25, -0.6, 0.0}, {0.0f, 1.0f, 0.0f}}, // 1
-			{{0.25, -0.6, 0.0}, {0.0f, 0.0f, 1.0f}}, // 2
-			{{0.25, 0.6, 0.0}, {1.0f, 1.0f, 0.0f}}, // 3
+			{{-0.25, 0.6, 0.0}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 0
+			{{-0.25, -0.6, 0.0}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 1
+			{{0.25, -0.6, 0.0}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 2
+			{{0.25, 0.6, 0.0}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // 3
 		};
 		// Index Data
 		std::vector<uint32_t> meshIndices = {
@@ -89,14 +87,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 			this->graphicsQueue,
 			this->graphicsCommandPool,
 			&meshVertices,
-			&meshIndices);
+			&meshIndices,
+			this->createTexture("marble006-color.jpg"));
 		Mesh secondMesh = Mesh(
 			this->mainDevice.physicalDevice,
 			this->mainDevice.logicalDevice,
 			this->graphicsQueue,
 			this->graphicsCommandPool,
 			&meshVertices2,
-			&meshIndices);
+			&meshIndices,
+			this->createTexture("pavingstones070-color.jpg"));
 
 		this->meshList.push_back(firstMesh);
 		this->meshList.push_back(secondMesh);
@@ -642,7 +642,7 @@ void VulkanRenderer::createGraphicsPipeline()
 	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Here you select whether you want to draw one object at a time (VK_VERTEX_INPUT_RATE_VERTEX) or one of the vertex for each at a time (VK_VERTEX_INPUT_RATE_INSTANCE)
 
 	// How the data for an attribute is defined within a vertex
-	std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+	std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
 	// Position Attribute 
 	attributeDescriptions[0].binding = 0; // Which binding the data is at (should be same as above - unless you have stream of data)
 	attributeDescriptions[0].location = 0; // Location in shader where data will be read from
@@ -653,6 +653,11 @@ void VulkanRenderer::createGraphicsPipeline()
 	attributeDescriptions[1].location = 1;
 	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT; 
 	attributeDescriptions[1].offset = offsetof(Vertex, col); 
+	// TExture Attribute
+	attributeDescriptions[2].binding = 0;
+	attributeDescriptions[2].location = 2;
+	attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[2].offset = offsetof(Vertex, tex);
 
 	// CREATE PIPELINE
 	// -- Vertex Input --
@@ -1197,14 +1202,19 @@ void VulkanRenderer::recordCommands(uint32_t currentImage)
 				&this->meshList[j].getModel() // Actual data being pushed (can be array hence &)
 			);
 
+			std::array<VkDescriptorSet, 2> descriptorSetGroup = {
+				this->descriptorSets[currentImage],
+				this->samplerDescriptorSets[this->meshList[j].getTexId()]
+			};
+
 			// Bind Descriptor Sets
 			vkCmdBindDescriptorSets(
 				this->commandBuffers[currentImage], // Specific command buffer to bind 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, // Can be used in the graphics pipeline
 				this->pipelineLayout, // This is how the data is coming into
 				0, // Because we can have multiple sets for bidning, here we provide which one
-				1, // How many descriptor sets for each draw
-				&this->descriptorSets[currentImage], // Point to the descrptor set that will be used here (one to one with command buffers, and not with meshes, so it will be the same for all our meshse) 
+				static_cast<uint32_t>(descriptorSetGroup.size()), // How many descriptor sets for each draw
+				descriptorSetGroup.data(), // Point to the descrptor set that will be used here (one to one with command buffers, and not with meshes, so it will be the same for all our meshse) 
 				0, // // Addresses that it's not possible to address to all our meshes
 				nullptr);
 

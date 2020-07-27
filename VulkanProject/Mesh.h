@@ -19,10 +19,13 @@ public:
 		VkQueue transferQueue, 
 		VkCommandPool transferCommandPool,
 		std::vector<Vertex>* vertices,
-		std::vector<uint32_t>* indices);
+		std::vector<uint32_t>* indices,
+		int newTexId);
 
 	void setModel(glm::mat4 newModel);
 	Model getModel();
+
+	int getTexId();
 
 	int getVertexCount();
 	VkBuffer getVertexBuffer();
@@ -36,6 +39,8 @@ public:
 
 private:
 	Model model;
+
+	int texId;
 
 	int vertexCount;
 	VkBuffer vertexBuffer; 
