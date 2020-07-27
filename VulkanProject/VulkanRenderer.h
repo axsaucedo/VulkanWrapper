@@ -70,10 +70,13 @@ private:
 
 	// - Descriptors
 	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSetLayout samplerSetLayout;
 	VkPushConstantRange pushConstantRange;
 
 	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
+	VkDescriptorPool samplerDescriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets; // One per swapchain image
+	std::vector<VkDescriptorSet> samplerDescriptorSets; // One per texture
 
 	std::vector<VkBuffer> vpUniformBuffer;
 	std::vector<VkDeviceMemory> vpUniformBufferMemory;
@@ -164,6 +167,7 @@ private:
 
 	int createTextureImage(std::string fileName);
 	int createTexture(std::string fileName);
+	int createTextureDescriptor(VkImageView textureImage);
 
 	// - Loader functions
 	stbi_uc* loadTextureFile(std::string fileName, int* width, int* height, VkDeviceSize* imageSize);
