@@ -38,7 +38,11 @@ int main()
 	float deltaTime = 0.0f;
 	float lastTime = 0.0f;
 
-	std::cout << "Running" << std::endl;
+	std::cout << "Creating Mesh Model" << std::endl;
+
+	int helicopterId = vulkanRenderer.createMeshModel("Models/Intergalactic_Spaceship-(Wavefront).obj");
+
+	std::cout << "Running game loop" << std::endl;
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
@@ -50,17 +54,11 @@ int main()
 		if (angle > 360.0f) {
 			angle -= 360.0f;
 		}
-		glm::mat4 firstModel(1.0f);
-		glm::mat4 secondModel(1.0f);
-
-		firstModel = glm::translate(firstModel, glm::vec3(-0.2f, 0.0f, -3.5f));
-		firstModel = glm::rotate(firstModel, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
-
-		secondModel = glm::translate(secondModel, glm::vec3(0.2f, 0.0f, -4.0f));
-		secondModel = glm::rotate(secondModel, glm::radians(-angle*100), glm::vec3(0.0f, 0.0f, 1.0f));
-
-		vulkanRenderer.updateModel(0, firstModel);
-		vulkanRenderer.updateModel(1, secondModel);
+		
+		glm::mat4 testMat = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+		testMat = glm::rotate(testMat, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+		//testMat = glm::rotate(testMat, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		vulkanRenderer.updateModel(helicopterId, testMat);
 
 		vulkanRenderer.draw();
 	}

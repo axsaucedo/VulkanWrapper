@@ -54,54 +54,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 			(float)this->swapchainExtent.width / (float)this->swapchainExtent.height,
 			0.1f, 100.0f);
 		this->uboViewProjection.view = glm::lookAt(
-			glm::vec3(2.0f, 0.0f, -1.0f), // Where the camara is
-			glm::vec3(0.0f, 0.0f, -4.0f), // The target / centre (set to origin here)
+			glm::vec3(5.0f, 3.0f, 0.0f), // Where the camara is
+			glm::vec3(0.0f, 0.0f, 0.0f), // The target / centre (set to origin here)
 			glm::vec3(0.0f, 1.0f, 0.0f)); // The nagle of the camera, ie where up value is - in this case up
 
 		// Vulkan inverts the coordinates, so we need to invert the y coordinate
 		uboViewProjection.projection[1][1] *= -1;
 
-		// -- Create a mesh --
-		// Vertex Data
-		std::vector<Vertex> meshVertices = {
-			{{-0.4, 0.4, 0.0}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 0
-			{{-0.4, -0.4, 0.0}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 1
-			{{0.4, -0.4, 0.0}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 2
-			{{0.4, 0.4, 0.0}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 3
-		};
-		std::vector<Vertex> meshVertices2 = {
-			{{-0.25, 0.6, 0.0}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 0
-			{{-0.25, -0.6, 0.0}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 1
-			{{0.25, -0.6, 0.0}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 2
-			{{0.25, 0.6, 0.0}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // 3
-		};
-		// Index Data
-		std::vector<uint32_t> meshIndices = {
-			0, 1, 2,
-			2, 3, 0
-		};
-		// Mesh
-		Mesh firstMesh = Mesh(
-			this->mainDevice.physicalDevice,
-			this->mainDevice.logicalDevice,
-			this->graphicsQueue,
-			this->graphicsCommandPool,
-			&meshVertices,
-			&meshIndices,
-			this->createTexture("marble006-color.jpg"));
-		Mesh secondMesh = Mesh(
-			this->mainDevice.physicalDevice,
-			this->mainDevice.logicalDevice,
-			this->graphicsQueue,
-			this->graphicsCommandPool,
-			&meshVertices2,
-			&meshIndices,
-			this->createTexture("pavingstones070-color.jpg"));
+		// Fallback / default texture (index 0)
+		this->createTexture("plain.png");
 
-		this->meshList.push_back(firstMesh);
-		this->meshList.push_back(secondMesh);
-
-		this->createMeshModel("Models/Seahawk.obj");
 	}
 	catch (const std::runtime_error& e) {
 		std::cout << "ERROR" << e.what() << std::endl;
@@ -115,9 +77,9 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::updateModel(int modelId, glm::mat4 newModel)
 {
-	if (modelId >= this->meshList.size()) return;
+	if (modelId >= this->modelList.size()) return;
 
-	this->meshList[modelId].setModel(newModel);
+	this->modelList[modelId].setModel(newModel);
 }
 
 void VulkanRenderer::cleanup()
@@ -157,10 +119,6 @@ void VulkanRenderer::cleanup()
 		//// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
 		//vkDestroyBuffer(this->mainDevice.logicalDevice, this->modelDynamicUniformBuffer[i], nullptr);
 		//vkFreeMemory(this->mainDevice.logicalDevice, this->modelDynamicUniformBufferMemory[i], nullptr);
-	}
-
-	for (size_t i = 0; i < this->meshList.size(); i++) {
-		this->meshList[i].destroyBuffers();
 	}
 
 	for (size_t i = 0; i < MAX_FRAME_DRAWS; i++)
@@ -1159,7 +1117,7 @@ void VulkanRenderer::recordCommands(uint32_t currentImage)
 	renderPassBeginInfo.renderArea.extent = swapchainExtent; // Size of region to run render pass on (starting at offset)
 	// WHen it's cleared we want to specify what it's being cleared to, and we need to define both colour and depth stencil
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 0.6f, 0.65f, 0.4f, 1.0f };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil.depth = 1.0f;
 
 	renderPassBeginInfo.pClearValues = clearValues.data(); // List of clear values 
@@ -1180,23 +1138,9 @@ void VulkanRenderer::recordCommands(uint32_t currentImage)
 
 		// After we bind the pipeline we can bind our vertex buffers
 
-		for (size_t j = 0; j < this->meshList.size(); j++) {
-			VkBuffer vertexBuffers[] = { this->meshList[j].getVertexBuffer() }; // Buffers to bind
-			VkDeviceSize offsets[] = { 0 }; // Offsets into buffers being bound (one for each of the buffers)
-			// Command to bind vertex buffer before drawing with them - parameter defs:
-			// Command buffer: Command buffer to bind the vertex buffers to 
-			// firstBinding: The binding based on the shader which is (binding = 0 , locaiton = <x>) by default
-			// bindingCount: How many bindings to iterate through (in this case we only have 1)
-			// pBuffers: This are the vertex buffers that we defined in the create function
-			// pOffsets: This are the offsets for each of the buffers
-			vkCmdBindVertexBuffers(this->commandBuffers[currentImage], 0, 1, vertexBuffers, offsets);
-
-			// Binding mesh index buffers (note that we can only bind one index buffer - for multiple vertex buffers)
-			vkCmdBindIndexBuffer(this->commandBuffers[currentImage], this->meshList[j].getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			//// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
-			//// Dynamic offset amount
-			//uint32_t dynamicOffset = static_cast<uint32_t>(this->modelUniformAlignment) * j;
+		for (size_t j = 0; j < this->modelList.size(); j++) {
+			
+			MeshModel thisModel = modelList[j];
 
 			// Push constants to given shader stage directly (no buffer)
 			vkCmdPushConstants(
@@ -1205,35 +1149,55 @@ void VulkanRenderer::recordCommands(uint32_t currentImage)
 				VK_SHADER_STAGE_VERTEX_BIT, // Stage to push constants to
 				0, // Offset of push constants to update
 				sizeof(Model), // size of the model being pushed
-				&this->meshList[j].getModel() // Actual data being pushed (can be array hence &)
+				&thisModel.getModel() // Actual data being pushed (can be array hence &)
 			);
 
-			std::array<VkDescriptorSet, 2> descriptorSetGroup = {
-				this->descriptorSets[currentImage],
-				this->samplerDescriptorSets[this->meshList[j].getTexId()]
-			};
+			for (size_t k = 0; k < thisModel.getMeshCount(); k++) {
 
-			// Bind Descriptor Sets
-			vkCmdBindDescriptorSets(
-				this->commandBuffers[currentImage], // Specific command buffer to bind 
-				VK_PIPELINE_BIND_POINT_GRAPHICS, // Can be used in the graphics pipeline
-				this->pipelineLayout, // This is how the data is coming into
-				0, // Because we can have multiple sets for bidning, here we provide which one
-				static_cast<uint32_t>(descriptorSetGroup.size()), // How many descriptor sets for each draw
-				descriptorSetGroup.data(), // Point to the descrptor set that will be used here (one to one with command buffers, and not with meshes, so it will be the same for all our meshse) 
-				0, // // Addresses that it's not possible to address to all our meshes
-				nullptr);
+				VkBuffer vertexBuffers[] = { thisModel.getMesh(k)->getVertexBuffer() }; // Buffers to bind
+				VkDeviceSize offsets[] = { 0 }; // Offsets into buffers being bound (one for each of the buffers)
+				// Command to bind vertex buffer before drawing with them - parameter defs:
+				// Command buffer: Command buffer to bind the vertex buffers to 
+				// firstBinding: The binding based on the shader which is (binding = 0 , locaiton = <x>) by default
+				// bindingCount: How many bindings to iterate through (in this case we only have 1)
+				// pBuffers: This are the vertex buffers that we defined in the create function
+				// pOffsets: This are the offsets for each of the buffers
+				vkCmdBindVertexBuffers(this->commandBuffers[currentImage], 0, 1, vertexBuffers, offsets);
 
-			// Execute pipeline - Explanation on parameters (in order as per func):
-			// Commandbuffer: Command buffer to attach draw command to
-			// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
-			// Instance count: Number of instances to draw
-			// First vertex: Location of the first vertex for the first one
-			// FIrst instance: Which instance number to start at
-			// However we're no longer using the vertex directly, we use the index buffers directly now, so see below
-			//vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+				// Binding mesh index buffers (note that we can only bind one index buffer - for multiple vertex buffers)
+				vkCmdBindIndexBuffer(this->commandBuffers[currentImage], thisModel.getMesh(k)->getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(this->commandBuffers[currentImage], this->meshList[j].getIndexCount(), 1, 0, 0, 0);
+				//// NO LONGER USED BELOW BUT KEEPING FOR REFERENCE, AS THAT'S HOW MODEL WAS DONE VIA DYNAMIC BUFFERS
+				//// Dynamic offset amount
+				//uint32_t dynamicOffset = static_cast<uint32_t>(this->modelUniformAlignment) * j;
+
+				std::array<VkDescriptorSet, 2> descriptorSetGroup = {
+					this->descriptorSets[currentImage],
+					this->samplerDescriptorSets[thisModel.getMesh(k)->getTexId()]
+				};
+
+				// Bind Descriptor Sets
+				vkCmdBindDescriptorSets(
+					this->commandBuffers[currentImage], // Specific command buffer to bind 
+					VK_PIPELINE_BIND_POINT_GRAPHICS, // Can be used in the graphics pipeline
+					this->pipelineLayout, // This is how the data is coming into
+					0, // Because we can have multiple sets for bidning, here we provide which one
+					static_cast<uint32_t>(descriptorSetGroup.size()), // How many descriptor sets for each draw
+					descriptorSetGroup.data(), // Point to the descrptor set that will be used here (one to one with command buffers, and not with meshes, so it will be the same for all our meshse) 
+					0, // // Addresses that it's not possible to address to all our meshes
+					nullptr);
+
+				// Execute pipeline - Explanation on parameters (in order as per func):
+				// Commandbuffer: Command buffer to attach draw command to
+				// Vertexcount: Number of vertices you want to draw (if using a model, then we would have a bindvertices function) - it will basically go through in this case 3 times as we pass 3
+				// Instance count: Number of instances to draw
+				// First vertex: Location of the first vertex for the first one
+				// FIrst instance: Which instance number to start at
+				// However we're no longer using the vertex directly, we use the index buffers directly now, so see below
+				//vkCmdDraw(this->commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0);
+
+				vkCmdDrawIndexed(this->commandBuffers[currentImage], thisModel.getMesh(k)->getIndexCount(), 1, 0, 0, 0);
+			}
 		}
 
 		vkCmdEndRenderPass(this->commandBuffers[currentImage]);
@@ -1739,7 +1703,7 @@ int VulkanRenderer::createTextureDescriptor(VkImageView textureImage)
 	return this->samplerDescriptorSets.size() - 1;
 }
 
-void VulkanRenderer::createMeshModel(std::string modelFile)
+int VulkanRenderer::createMeshModel(std::string modelFile)
 {
 	// Import model scene
 	Assimp::Importer importer;
@@ -1782,6 +1746,8 @@ void VulkanRenderer::createMeshModel(std::string modelFile)
 	// Create mesh model and add to list
 	MeshModel meshModel = MeshModel(modelMeshes);
 	modelList.push_back(modelMeshes);
+
+	return this->modelList.size() - 1;
 }
 
 stbi_uc* VulkanRenderer::loadTextureFile(std::string fileName, int* width, int* height, VkDeviceSize* imageSize)
