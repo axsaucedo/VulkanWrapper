@@ -176,5 +176,7 @@ Debug/
 VulkanProject/Debug/VulkanProject.tlog/
 
 code_*
+VulkanProject/Models/
+VulkanProject/Textures/
 
 
