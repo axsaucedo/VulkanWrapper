@@ -9,9 +9,9 @@ This Vulkan Renderer features the following functionality:
 * Obj model loading
 * Dynamic model loading
 * Dynamic View Projection transformations
+* Deferred rendering with multiple subpasses
 * Converting GLSL shaders to SPIRV
 * Game loop
-* Multiple Subpases
 * Multiple descriptor sets 
 * Dynamic buffers 
 * Depth buffer based on vertex distance to camera
@@ -37,6 +37,10 @@ This Vulkan Renderer features the following functionality:
 ## Model Loading
 
 ![](docs/images/loaded-model.gif)
+
+## Multiple subpass (with multiple pipelines and shaders)
+
+![](docs/images/loaded-model2.gif)
 
 ## Texture Loading
 
