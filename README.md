@@ -17,15 +17,32 @@ This Vulkan Renderer features the following functionality:
 * Depth buffer based on vertex distance to camera
 * Semaphores and fences to ensure parallel correctness
 
-# Model Loading
+# Building and running
+
+## Dependencies
+* vulkan-1.lib
+* glfw3.lib
+* assimp-vc140-mt.lib
+* Vlkan 1.2.141.2 includes
+* GLM includes (in this repo)
+* ASSIMP includes (in this repo)
+* GLFW includes (in this repo)
+* stb_image.h (in this repo)
+
+# Screenshots
+
+## Model loaded
+* https://free3d.com/3d-model/intergalactic-spaceship-in-blender-28-eevee-394046.html
+
+## Model Loading
 
 ![](docs/images/loaded-model.gif)
 
-# Texture Loading
+## Texture Loading
 
 ![](docs/images/vulkan-textures.gif)
 
-# Simple Colours
+## Simple Colours
 
 ![](docs/images/vulkan-squares.gif)
 
